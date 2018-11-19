@@ -1,4 +1,3 @@
-import sqlite3
 import csv
 import json
 import sqlite3 as sqlite
@@ -125,20 +124,9 @@ populate_choc_db()
 # Part 2: Implement logic to process user commands
 def process_command(command):
 
-    # base_prompt = "Enter command(or help for options): "
-    instruction = '''
-            
-               bars
-                Description: Lists chocolate bars, according the specified parameters.
-                Parameters:
-                sellcountry=<alpha2> | sourcecountry=<alpha2> | sellregion=<name> | sourceregion=<name> [default: none]
-                Description: Specifies a country or region within which to limit the results, and also specifies whether to limit by the seller (or manufacturer) or by the bean origin source.
-                ratings | cocoa [default: ratings]
-                Description: Specifies whether to sort by rating or cocoa percentage
-                top=<limit> | bottom=<limit> [default: top=10]
-                Description: Specifies whether to list the top <limit> matches or the bottom <limit> matches.
-
-            '''
+    conn = sqlite.connect(DBNAME)
+    cur = conn.cursor()
+    base_prompt = "Enter command(or help for options): "
 
     feedback = ""
 
@@ -146,72 +134,139 @@ def process_command(command):
         action = input(feedback + "\n" + base_prompt)
         feedback = ""
         words = action.split()
-        if len(words) > 0:
-            command = words[0]
-        else:
-            command = None
+        # if len(words) > 0:
+        command = words[0]
+        print(command)
+        # else:
+        #     command = None
         if command == "exit":
             print("Exiting...")
             return
 
-        elif command == "list" and len(words) > 1:
-            search = words[1]
+        elif command == "bars":
 
-            if len(words[1]) != 2:
-                feedback += "Please enter a two-letter state abbreviation\n"
-            else:
-                # call the function to search sites
-                list_result = get_sites_for_state(words[1])
-                count = 0
-                for site in list_result:
-                    count = count+1
-                    print(str(count)+" "+site.__str__())
+            if 1 < len(words) <= 4:
+                base_statement = '''
+                SELECT b.SpecificBeanBarName,b.Company,C1.EnglishName,b.Rating,b.CocoaPercent,C2.EnglishName from Bars as b 
+                JOIN Countries as c1 
+                on c1.ID = b.CompanyLocationId
+                JOIN Countries as c2 
+                on c2.ID = b.BroadBeanOriginId 
+                '''
 
-        elif command == "nearby" and len(words) > 1:
-            search = int(words[1])
-            if list_result != []:
-                if int(words[1]):
-                    if int(words[1]) in range(0, len(list_result)):
-                        nearby_result = get_nearby_places_for_site(list_result[int(words[1])-1])
-                        if len(nearby_result) == 0:
-                            feedback += "Nearby sites are not available. Please try another number on the list"
-                        else:
-                            for i in nearby_result:
-                                print(i.__str__())
+                if 'sellcountry=' in words:
+                    value = words.split("=")[1]
+                    filter_statement = 'Where c1.Alpha2= '
+                    filter_statement += value
+
+                elif 'sourcecountry=' in words:
+                    value = words.split("=")[1]
+                    filter_statement = 'Where c2.Alpha2= '
+                    filter_statement += value
+
+                elif 'sellregion=' in words:
+                    value = words.split("=")[1]
+                    filter_statement = 'Where c1.EnglishName=?'
+                    filter_statement += value
+
+                elif 'sourceregion=' in words:
+                    value = words.split("=")[1]
+                    filter_statement = 'Where c2.EnglishName=?'
+                    filter_statement += value
 
                 else:
-                    feedback += "Please pick a site by number.\n"
-            else:
-                feedback += "Please search for National Sites in a state first. Enter 'list <state abbreviation>'"
+                    filter_statement = ''
 
-        elif command == "map":
+                if 'cocoa' in words:
+                    order_statement = 'ORDER BY b.CocoaPercent DESC '
 
-            if type(search) == int:
-                plot_nearby_for_site(list_result[search-1])
+                else:
+                    order_statement = 'ORDER BY b.rating DESC '
 
-            elif type(search) == str and search != '':
-                plot_sites_for_state(search)
-                feedback += "Creating a map for National Sites found."
-            else:
-                feedback += "Please search for National Sites in a state first"
+                if 'top=' in words:
+                    value = words.split("=")[1]
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
 
-        elif command == "help":
-            print(instruction)
+                elif 'bottom=' in words:
+                    value = words.split("=")[1]
+                    order_statement.replace('DESC', 'ASC')
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
+
+                else:
+                    limit_statement = 'LIMIT 10'
+
+                final_statement = base_statement+filter_statement+order_statement+limit_statement
+
+                result = cur.execute(final_statement).fetchall()
+
+                print(result)
+
+
+
+
+
+
+            # if len(words[1]) != 2:
+            #     feedback += "Please enter a two-letter state abbreviation\n"
+            # else:
+            #     # call the function to search sites
+            #     list_result = get_sites_for_state(words[1])
+            #     count = 0
+            #     for site in list_result:
+            #         count = count+1
+            #         print(str(count)+" "+site.__str__())
+
+
+
+
+
+
+
+        # elif command == "nearby" and len(words) > 1:
+        #     search = int(words[1])
+        #     if list_result != []:
+        #         if int(words[1]):
+        #             if int(words[1]) in range(0, len(list_result)):
+        #                 nearby_result = get_nearby_places_for_site(list_result[int(words[1])-1])
+        #                 if len(nearby_result) == 0:
+        #                     feedback += "Nearby sites are not available. Please try another number on the list"
+        #                 else:
+        #                     for i in nearby_result:
+        #                         print(i.__str__())
+        #
+        #         else:
+        #             feedback += "Please pick a site by number.\n"
+        #     else:
+        #         feedback += "Please search for National Sites in a state first. Enter 'list <state abbreviation>'"
+        #
+        # elif command == "map":
+        #
+        #     if type(search) == int:
+        #         plot_nearby_for_site(list_result[search-1])
+        #
+        #     elif type(search) == str and search != '':
+        #         plot_sites_for_state(search)
+        #         feedback += "Creating a map for National Sites found."
+        #     else:
+        #         feedback += "Please search for National Sites in a state first"
+        #
+        # elif command == "help":
+        #     print(instruction)
 
         else:
             feedback += "Command not recognized:"+command
+        conn.commit()
 
-    return []
+
 #
 #
 
 
 
 
-
-
-
-
+process_command('bars')
 
 
 
