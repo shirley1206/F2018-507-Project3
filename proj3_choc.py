@@ -1,6 +1,7 @@
 import csv
 import json
 import sqlite3 as sqlite
+import sqlite3
 
 # proj3_choc.py
 # You can change anything in this file you want as long as you pass the tests
@@ -115,158 +116,213 @@ def populate_choc_db():
     conn.close()
 
 
-create_choc_db()
-populate_choc_db()
+# create_choc_db()
+# populate_choc_db()
+#
 
 
-
-
-# Part 2: Implement logic to process user commands
+#
+# # Part 2: Implement logic to process user commands
 def process_command(command):
 
     conn = sqlite.connect(DBNAME)
     cur = conn.cursor()
-    base_prompt = "Enter command(or help for options): "
+    words = command.split()
+    # if len(words) > 0:
 
-    feedback = ""
+    if "exit" in words:
+        print("Exiting...")
+        return
 
-    while True:
-        action = input(feedback + "\n" + base_prompt)
-        feedback = ""
-        words = action.split()
-        # if len(words) > 0:
-        command = words[0]
-        print(command)
-        # else:
-        #     command = None
-        if command == "exit":
-            print("Exiting...")
-            return
+    elif "bars" == words[0]:
 
-        elif command == "bars":
+        if 1 < len(words) <= 4:
+            base_statement = '''
+            SELECT b.SpecificBeanBarName,b.Company,c1.EnglishName,b.Rating,b.CocoaPercent,C2.EnglishName from Bars as b
+            JOIN Countries as c1
+            on c1.ID = b.CompanyLocationId
+            JOIN Countries as c2
+            on c2.ID = b.BroadBeanOriginId
+            '''
 
-            if 1 < len(words) <= 4:
-                base_statement = '''
-                SELECT b.SpecificBeanBarName,b.Company,C1.EnglishName,b.Rating,b.CocoaPercent,C2.EnglishName from Bars as b 
-                JOIN Countries as c1 
-                on c1.ID = b.CompanyLocationId
-                JOIN Countries as c2 
-                on c2.ID = b.BroadBeanOriginId 
-                '''
+            filter_statement = ''
+            for option in words:
 
-                if 'sellcountry=' in words:
-                    value = words.split("=")[1]
-                    filter_statement = 'Where c1.Alpha2= '
-                    filter_statement += value
+                if 'sellcountry=' in option:
+                    value = option.split("=")[1]
+                    filter_statement = 'Where c1.Alpha2='
+                    filter_statement += '"{}"'.format(value)
 
-                elif 'sourcecountry=' in words:
-                    value = words.split("=")[1]
-                    filter_statement = 'Where c2.Alpha2= '
-                    filter_statement += value
+                elif 'sourcecountry=' in option:
+                    value = option.split("=")[1]
+                    filter_statement = 'Where c2.Alpha2='
+                    filter_statement += '"{}"'.format(value)
 
-                elif 'sellregion=' in words:
-                    value = words.split("=")[1]
-                    filter_statement = 'Where c1.EnglishName=?'
-                    filter_statement += value
+                elif 'sellregion=' in option:
+                    value = option.split("=")[1]
+                    filter_statement = 'Where c1.Region='
+                    filter_statement += '"{}"'.format(value)
 
-                elif 'sourceregion=' in words:
-                    value = words.split("=")[1]
-                    filter_statement = 'Where c2.EnglishName=?'
-                    filter_statement += value
+                elif 'sourceregion=' in option:
+                    value = option.split("=")[1]
+                    filter_statement = 'Where c2.Region='
+                    filter_statement += '"{}"'.format(value)
 
-                else:
-                    filter_statement = ''
+            if 'cocoa' in words:
+                order_statement = 'ORDER BY b.rating DESC'
 
-                if 'cocoa' in words:
-                    order_statement = 'ORDER BY b.CocoaPercent DESC '
+            else:
+                order_statement = 'ORDER BY b.CocoaPercent DESC'
 
-                else:
-                    order_statement = 'ORDER BY b.rating DESC '
+            for option in words:
 
-                if 'top=' in words:
-                    value = words.split("=")[1]
+                if 'top=' in option:
+                    value = option.split("=")[1]
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-                elif 'bottom=' in words:
-                    value = words.split("=")[1]
-                    order_statement.replace('DESC', 'ASC')
+                elif 'bottom=' in option:
+                    value = option.split("=")[1]
+                    order_statement.replace('DESC ', 'ASC ')
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-                else:
-                    limit_statement = 'LIMIT 10'
+            if 'top=' not in words and 'bottom=' not in words:
+                limit_statement = 'LIMIT 10'
 
-                final_statement = base_statement+filter_statement+order_statement+limit_statement
+            final_statement = base_statement+filter_statement+' '+order_statement+' '+limit_statement
+            result = cur.execute(final_statement).fetchall()
+            print('bars')
 
-                result = cur.execute(final_statement).fetchall()
-
-                print(result)
-
-
+            return result
 
 
+    elif "companies" == words[0]:
+        if 1 < len(words) <= 4:
+
+            filter_statement = ''
+            for option in words:
+
+                if 'country=' in option:
+                    value = option.split("=")[1]
+                    filter_statement = 'Where c.Alpha2='
+                    filter_statement += '"{}"'.format(value)
+
+                elif 'region=' in option:
+                    value = option.split("=")[1]
+                    filter_statement = 'Where c.Region='
+                    filter_statement += '"{}"'.format(value)
+
+            if 'cocoa' in words:
+                order_statement = 'ORDER BY AVG(b.CocoaPercent) DESC'
+                agg = 'round(AVG(b.CocoaPercent),-1)'
+
+            elif 'bars_sold' in words:
+                order_statement = 'ORDER BY count(b.company) DESC'
+                agg = 'count(b.company)'
+
+            else:
+                order_statement = 'ORDER BY AVG(b.rating) DESC'
+                agg = 'round(AVG(b.rating),1)'
+
+            for option in words:
+
+                if 'top=' in option:
+                    value = option.split("=")[1]
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
+
+                elif 'bottom=' in option:
+                    value = option.split("=")[1]
+                    order_statement.replace('DESC ', 'ASC ')
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
+
+            if 'top=' not in words and 'bottom=' not in words:
+                limit_statement = 'LIMIT 10'
+
+            base_statement = "SELECT b.Company,c.EnglishName,{}".format(agg)
+            base_statement += "from Bars as b "
+            base_statement += "JOIN Countries as c "
+            base_statement += "on c.ID = b.CompanyLocationId "
+            group_statement = "Group by b.company Having count (b.company) >4"
+            final_statement = base_statement+' '+filter_statement+' '+group_statement+' '+order_statement+' '+limit_statement
+            # print(final_statement)
+            result = cur.execute(final_statement).fetchall()
+            print('companies')
+            return result
 
 
-            # if len(words[1]) != 2:
-            #     feedback += "Please enter a two-letter state abbreviation\n"
-            # else:
-            #     # call the function to search sites
-            #     list_result = get_sites_for_state(words[1])
-            #     count = 0
-            #     for site in list_result:
-            #         count = count+1
-            #         print(str(count)+" "+site.__str__())
+    elif "countries" == words[0]:
+        print('countries')
+
+        if 1 < len(words) <= 4:
+            filter_statement = ''
+            join_statement = "JOIN Bars as b "
+            for option in words:
+
+                if 'region=' in option:
+                    value = option.split("=")[1]
+                    filter_statement = 'Where c.Region='
+                    filter_statement += '"{}"'.format(value)
+
+            if 'sources' in words:
+                join_statement += "on c.ID = b.BroadBeanOriginId"
+
+            else:
+                join_statement += "on c.ID = b.CompanyLocationId"
+
+            if 'cocoa' in words:
+                order_statement = 'ORDER BY AVG(b.CocoaPercent) DESC'
+                agg = 'round(AVG(b.CocoaPercent),-1)'
+
+            elif 'bars_sold' in words:
+                order_statement = 'ORDER BY count(b.CompanyLocationId) DESC'
+                agg = 'count(b.CompanyLocationId)'
+
+            else:
+                order_statement = 'ORDER BY AVG(b.rating) DESC'
+                agg = 'round(AVG(b.rating),1)'
+
+            for option in words:
+
+                if 'top=' in option:
+                    value = option.split("=")[1]
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
+
+                elif 'bottom=' in option:
+                    value = option.split("=")[1]
+                    order_statement.replace('DESC ', 'ASC ')
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
+
+            if 'top=' not in words and 'bottom=' not in words:
+                limit_statement = 'LIMIT 10'
+
+            base_statement = "SELECT c.EnglishName,c.Region,{}".format(agg)
+            base_statement += "from Countries as c "
+            group_statement = "Group by c.EnglishName Having count (b.CompanyLocationId) >4"
+            final_statement = base_statement+join_statement+' '+filter_statement+' '+group_statement+' '+order_statement+' '+limit_statement
+            # print(final_statement)
+            result = cur.execute(final_statement).fetchall()
+            return result
 
 
 
 
 
 
-
-        # elif command == "nearby" and len(words) > 1:
-        #     search = int(words[1])
-        #     if list_result != []:
-        #         if int(words[1]):
-        #             if int(words[1]) in range(0, len(list_result)):
-        #                 nearby_result = get_nearby_places_for_site(list_result[int(words[1])-1])
-        #                 if len(nearby_result) == 0:
-        #                     feedback += "Nearby sites are not available. Please try another number on the list"
-        #                 else:
-        #                     for i in nearby_result:
-        #                         print(i.__str__())
-        #
-        #         else:
-        #             feedback += "Please pick a site by number.\n"
-        #     else:
-        #         feedback += "Please search for National Sites in a state first. Enter 'list <state abbreviation>'"
-        #
-        # elif command == "map":
-        #
-        #     if type(search) == int:
-        #         plot_nearby_for_site(list_result[search-1])
-        #
-        #     elif type(search) == str and search != '':
-        #         plot_sites_for_state(search)
-        #         feedback += "Creating a map for National Sites found."
-        #     else:
-        #         feedback += "Please search for National Sites in a state first"
-        #
-        # elif command == "help":
-        #     print(instruction)
-
-        else:
-            feedback += "Command not recognized:"+command
-        conn.commit()
+    conn.commit()
 
 
-#
-#
+result = process_command('countries bars_sold')
+
+print(result)
 
 
 
 
-process_command('bars')
 
 
 
