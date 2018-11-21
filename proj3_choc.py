@@ -47,15 +47,15 @@ def populate_choc_db():
     
     CREATE Table 'Bars'(
     'ID' INTEGER PRIMARY KEY AUTOINCREMENT,
-    'Company' TEXT NOT NULL,
-    'SpecificBeanBarName' TEXT NOT NULL,
-    'REF' TEXT NOT NULL,
-    'ReviewDate' TEXT NOT NULL,
-    'CocoaPercent' REAL NOT NULL,
-    'CompanyLocationId' INTEGER NOT NULL,
-    'Rating' REAL NOT NULL,
-    'BeanType' TEXT NOT NULL,
-    'BroadBeanOriginId' INTEGER NOT NULL
+    'Company' TEXT,
+    'SpecificBeanBarName' TEXT,
+    'REF' TEXT,
+    'ReviewDate' TEXT,
+    'CocoaPercent' REAL,
+    'CompanyLocationId' INTEGER,
+    'Rating' REAL,
+    'BeanType' TEXT,
+    'BroadBeanOriginId' INTEGER 
     );
     
     '''
@@ -65,12 +65,12 @@ def populate_choc_db():
     statement = '''
     CREATE Table 'Countries'(
     'ID' INTEGER PRIMARY KEY AUTOINCREMENT,
-    'Alpha2' TEXT NOT NULL,
-    'Alpha3' TEXT NOT NULL,
-    'EnglishName' TEXT NOT NULL,
-    'Region' TEXT NOT NULL,
-    'Subregion' TEXT NOT NULL,
-    'Population' INTEGER NOT NULL,
+    'Alpha2' TEXT,
+    'Alpha3' TEXT,
+    'EnglishName' TEXT,
+    'Region' TEXT,
+    'Subregion' TEXT,
+    'Population' INTEGER,
     'Area' REAL
     );
 
@@ -107,7 +107,9 @@ def populate_choc_db():
                 BroadBeanOriginId = country_dict[row[8]]
             except:
                 BroadBeanOriginId = ""
-            insertion = (None, row[0], row[1], row[2], row[3], row[4], CompanyLocationId, row[6], row[7], BroadBeanOriginId)
+
+            cocoapercentage = float(row[4].strip('%'))/100
+            insertion = (None, row[0], row[1], row[2], row[3], cocoapercentage, CompanyLocationId, row[6], row[7], BroadBeanOriginId)
             statement = 'INSERT INTO "Bars"'
             statement += "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ? ,?)"
             cur.execute(statement, insertion)
@@ -116,9 +118,9 @@ def populate_choc_db():
     conn.close()
 
 
-# create_choc_db()
-# populate_choc_db()
-#
+create_choc_db()
+populate_choc_db()
+
 
 
 #
@@ -136,14 +138,7 @@ def process_command(command):
 
     elif "bars" == words[0]:
 
-        if 1 < len(words) <= 4:
-            base_statement = '''
-            SELECT b.SpecificBeanBarName,b.Company,c1.EnglishName,b.Rating,b.CocoaPercent,C2.EnglishName from Bars as b
-            JOIN Countries as c1
-            on c1.ID = b.CompanyLocationId
-            JOIN Countries as c2
-            on c2.ID = b.BroadBeanOriginId
-            '''
+        if 1 < len(words):
 
             filter_statement = ''
             for option in words:
@@ -169,10 +164,10 @@ def process_command(command):
                     filter_statement += '"{}"'.format(value)
 
             if 'cocoa' in words:
-                order_statement = 'ORDER BY b.rating DESC'
+                order_statement = 'ORDER BY b.CocoaPercent DESC'
 
             else:
-                order_statement = 'ORDER BY b.CocoaPercent DESC'
+                order_statement = 'ORDER BY b.rating DESC'
 
             for option in words:
 
@@ -181,24 +176,31 @@ def process_command(command):
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-                elif 'bottom=' in option:
+                if 'bottom=' in option:
                     value = option.split("=")[1]
-                    order_statement.replace('DESC ', 'ASC ')
+                    order_statement = order_statement.replace(' DESC', ' ASC')
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-            if 'top=' not in words and 'bottom=' not in words:
-                limit_statement = 'LIMIT 10'
+                elif 'top=' not in option and 'bottom=' not in option:
+                    limit_statement = 'LIMIT 10'
+
+            base_statement = "SELECT b.SpecificBeanBarName,b.Company,c1.EnglishName,b.Rating,b.CocoaPercent,c2.EnglishName "
+            base_statement += "from Bars as b "
+            base_statement += "JOIN Countries as c1 "
+            base_statement += "on c1.ID = b.CompanyLocationId "
+            base_statement += "LEFT JOIN Countries as c2 "
+            base_statement += "on c2.ID = b.BroadBeanOriginId "
 
             final_statement = base_statement+filter_statement+' '+order_statement+' '+limit_statement
+            # print(final_statement)
             result = cur.execute(final_statement).fetchall()
-            print('bars')
 
             return result
 
 
     elif "companies" == words[0]:
-        if 1 < len(words) <= 4:
+        if 1 < len(words):
 
             filter_statement = ''
             for option in words:
@@ -232,14 +234,14 @@ def process_command(command):
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-                elif 'bottom=' in option:
+                if 'bottom=' in option:
                     value = option.split("=")[1]
-                    order_statement.replace('DESC ', 'ASC ')
+                    order_statement = order_statement.replace(' DESC', ' ASC')
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-            if 'top=' not in words and 'bottom=' not in words:
-                limit_statement = 'LIMIT 10'
+                elif 'top=' not in option and 'bottom=' not in option:
+                    limit_statement = 'LIMIT 10'
 
             base_statement = "SELECT b.Company,c.EnglishName,{}".format(agg)
             base_statement += "from Bars as b "
@@ -249,14 +251,13 @@ def process_command(command):
             final_statement = base_statement+' '+filter_statement+' '+group_statement+' '+order_statement+' '+limit_statement
             # print(final_statement)
             result = cur.execute(final_statement).fetchall()
-            print('companies')
             return result
 
 
     elif "countries" == words[0]:
-        print('countries')
+        # print('countries')
 
-        if 1 < len(words) <= 4:
+        if 1 < len(words):
             filter_statement = ''
             join_statement = "JOIN Bars as b "
             for option in words:
@@ -291,14 +292,14 @@ def process_command(command):
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-                elif 'bottom=' in option:
+                if 'bottom=' in option:
                     value = option.split("=")[1]
-                    order_statement.replace('DESC ', 'ASC ')
+                    order_statement = order_statement.replace(' DESC', ' ASC')
                     limit_statement = 'LIMIT '
                     limit_statement += value
 
-            if 'top=' not in words and 'bottom=' not in words:
-                limit_statement = 'LIMIT 10'
+                elif 'top=' not in option and 'bottom=' not in option:
+                    limit_statement = 'LIMIT 10'
 
             base_statement = "SELECT c.EnglishName,c.Region,{}".format(agg)
             base_statement += "from Countries as c "
@@ -309,39 +310,106 @@ def process_command(command):
             return result
 
 
+    elif "regions" == words[0]:
+        # print('regions')
 
+        if 1 < len(words):
+            filter_statement = ''
+            join_statement = "JOIN Bars as b "
 
+            if 'sources' in words:
+                join_statement += "on c.ID = b.BroadBeanOriginId"
 
+            else:
+                join_statement += "on c.ID = b.CompanyLocationId"
+
+            if 'cocoa' in words:
+                order_statement = 'ORDER BY AVG(b.CocoaPercent) DESC'
+                agg = 'round(AVG(b.CocoaPercent),-1)'
+
+            elif 'bars_sold' in words:
+                order_statement = 'ORDER BY count (c.Region) DESC'
+                agg = 'count (c.Region)'
+
+            else:
+                order_statement = 'ORDER BY AVG(b.rating) DESC'
+                agg = 'round(AVG(b.rating),1)'
+
+            for option in words:
+
+                if 'top=' in option:
+                    value = option.split("=")[1]
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
+
+                if 'bottom=' in option:
+                    value = option.split("=")[1]
+                    order_statement = order_statement.replace(' DESC', ' ASC')
+                    limit_statement = 'LIMIT '
+                    limit_statement += value
+
+                elif 'top=' not in option and 'bottom=' not in option:
+                    limit_statement = 'LIMIT 10'
+
+            base_statement = "SELECT c.Region,{}".format(agg)
+            base_statement += "from Countries as c "
+            group_statement = "Group by c.Region Having count (c.Region) >4"
+            final_statement = base_statement+join_statement+' '+filter_statement+' '+group_statement+' '+order_statement+' '+limit_statement
+            # print(final_statement)
+            result = cur.execute(final_statement).fetchall()
+            return result
 
     conn.commit()
 
 
-result = process_command('countries bars_sold')
-
-print(result)
+# process_command('regions ratings')
 
 
+def load_help_text():
+    with open('help.txt') as f:
+        return f.read()
+
+
+# Part 3: Implement interactive prompt. We've started for you!
+def interactive_prompt():
+    help_text = load_help_text()
+    response = ''
+    while response != 'exit':
+        response = input('Enter a command: ')
+
+        if response == 'help':
+            print(help_text)
+            continue
+
+        if response == 'exit':
+            print("bye")
+            continue
+
+        words = response.split('=')
+        command_list = ["bars", "countries", "companies", "regions"]
+        param_list = ["sellcountry=","sourcecountry=", "sellregion=", "sourceregion=", "ratings", "cocoa", "top", "bottom", "country=", "region=",
+                      "sellers", "sources"]
+
+        try:
+            for command in words:
+                if command not in command_list:
+                    break
+
+            for param in param_list:
+                if param not in words:
+                    break
+
+            print("Command not recognized:" +" "+response)
+
+        except:
+            process_command(str(response))
 
 
 
 
 
 
-# def load_help_text():
-#     with open('help.txt') as f:
-#         return f.read()
-#
-# # Part 3: Implement interactive prompt. We've started for you!
-# def interactive_prompt():
-#     help_text = load_help_text()
-#     response = ''
-#     while response != 'exit':
-#         response = input('Enter a command: ')
-#
-#         if response == 'help':
-#             print(help_text)
-#             continue
 
 # Make sure nothing runs or prints out when this file is run as a module
-# if __name__=="__main__":
-#     interactive_prompt()
+if __name__=="__main__":
+    interactive_prompt()
