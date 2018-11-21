@@ -362,9 +362,6 @@ def process_command(command):
     conn.commit()
 
 
-# process_command('regions ratings')
-
-
 def load_help_text():
     with open('help.txt') as f:
         return f.read()
@@ -385,25 +382,68 @@ def interactive_prompt():
             print("bye")
             continue
 
-        words = response.split('=')
-        command_list = ["bars", "countries", "companies", "regions"]
-        param_list = ["sellcountry=","sourcecountry=", "sellregion=", "sourceregion=", "ratings", "cocoa", "top", "bottom", "country=", "region=",
-                      "sellers", "sources"]
+        if response == '':
+            continue
 
-        try:
+        words = response.split()
+        command_list = ["bars", "countries", "companies", "regions", "sellcountry","sourcecountry", "sellregion", "sourceregion", "ratings", "cocoa", "bars_sold", "top", "bottom", "country", "region", "sellers", "sources"]
+
+        if len(words) >= 2:
+
             for command in words:
-                if command not in command_list:
-                    break
+                param = command.split("=")[0]
 
-            for param in param_list:
-                if param not in words:
-                    break
+                if param in command_list:
+                    result = process_command(response)
 
-            print("Command not recognized:" +" "+response)
+                if param not in command_list:
+                    result = ''
+                    continue
 
-        except:
-            process_command(str(response))
+            if result != '':
 
+                for row in result:
+                    # print(row)
+                    string_list =[]
+                    for data in row:
+                        data = str(data)
+                        string_list.append(data)
+                    # print(string_list)
+                    truncated_string_list = []
+                    for data in string_list:
+                        data = data.replace('None', 'Unknown')
+
+                        if len(data) > 12:
+                            t_data = data[:12]+'...'
+                            truncated_string_list.append(t_data)
+
+                        else:
+                            truncated_string_list.append(data)
+
+                    # print(truncated_string_list)
+                    if len(truncated_string_list) == 6:
+                        output = "{:15} {:15} {:15} {:5} {:5} {:15}".format(truncated_string_list[0], truncated_string_list[1], truncated_string_list[2], truncated_string_list[3], truncated_string_list[4], truncated_string_list[5])
+                        print(output)
+
+                    if len(truncated_string_list) == 3:
+                        output = "{:15} {:15} {:5}".format(truncated_string_list[0], truncated_string_list[1], truncated_string_list[2])
+                        print(output)
+
+                    if len(truncated_string_list) == 2:
+                        output = "{:15} {:5}".format(truncated_string_list[0], truncated_string_list[1])
+                        print(output)
+
+
+
+
+
+
+            else:
+                print("Command not recognized:"+' '+response)
+
+
+        else:
+            print("Command not recognized:"+' '+response)
 
 
 
@@ -412,4 +452,5 @@ def interactive_prompt():
 
 # Make sure nothing runs or prints out when this file is run as a module
 if __name__=="__main__":
+
     interactive_prompt()
