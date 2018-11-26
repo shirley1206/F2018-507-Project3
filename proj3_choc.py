@@ -403,14 +403,18 @@ def interactive_prompt():
             if result != '':
 
                 for row in result:
-                    # print(row)
-                    string_list =[]
+                    string_list = []
                     for data in row:
-                        data = str(data)
+                        if isinstance(data, float) and data < 1.0:
+                            data = data * 100
+                            data = round(data)
+                            data = str(data)
+                            data = data + '%'
                         string_list.append(data)
                     # print(string_list)
                     truncated_string_list = []
                     for data in string_list:
+                        data = str(data)
                         data = data.replace('None', 'Unknown')
 
                         if len(data) > 12:
@@ -422,6 +426,8 @@ def interactive_prompt():
 
                     # print(truncated_string_list)
                     if len(truncated_string_list) == 6:
+                        if truncated_string_list[4] == '1.0':
+                            truncated_string_list[4] = '100%'
                         output = "{:15} {:15} {:15} {:5} {:5} {:15}".format(truncated_string_list[0], truncated_string_list[1], truncated_string_list[2], truncated_string_list[3], truncated_string_list[4], truncated_string_list[5])
                         print(output)
 
@@ -444,8 +450,6 @@ def interactive_prompt():
 
         else:
             print("Command not recognized:"+' '+response)
-
-
 
 
 
