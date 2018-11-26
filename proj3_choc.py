@@ -452,9 +452,6 @@ def interactive_prompt():
             print("Command not recognized:"+' '+response)
 
 
-
-
 # Make sure nothing runs or prints out when this file is run as a module
 if __name__=="__main__":
-
     interactive_prompt()
